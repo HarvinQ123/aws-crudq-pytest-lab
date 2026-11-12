@@ -6,13 +6,13 @@ A small Python project for testing AWS code. It does **Create, Read, Update, Del
 
 The unit tests need **no AWS account or credentials**. Clone, install, run.
 
-## Quick start
+## Quick start (macOS / Linux)
 
 ```bash
 git clone https://github.com/HarvinQ123/aws-crudq-pytest-lab.git
 cd aws-crudq-pytest-lab
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+./scripts/setup.sh          # creates .venv, installs dependencies, runs the unit tests
+source .venv/bin/activate
 pytest -q
 ```
 
@@ -20,7 +20,109 @@ pytest -q
 30 passed, 2 skipped
 ```
 
-The 2 skipped tests are the real-AWS integration tests (see below).
+The 2 skipped tests are the real-AWS integration tests (see [Running against real AWS](#running-against-real-aws-optional)). For step-by-step instructions, including Windows, see **Setup instructions** below.
+
+## Setup instructions
+
+### Prerequisites
+
+| Need | Version | Check with |
+|---|---|---|
+| Python | **3.10 or newer** (CI uses 3.13) | `python3 --version` |
+| git | any recent | `git --version` |
+| AWS account | **not needed** for the unit tests | — |
+
+On macOS, if `python3` is missing or older than 3.10, install it with `brew install python` or from [python.org](https://www.python.org/downloads/).
+
+### Why a virtual environment?
+
+A virtual environment (`.venv`) is a private folder of Python packages for this project only. Installing into it keeps this project's pinned versions of boto3, moto and pytest separate from your system Python and from your other projects. `.venv/` is in `.gitignore` and is never committed; each person creates their own.
+
+### Step by step
+
+**1. Get the code**
+
+```bash
+git clone https://github.com/HarvinQ123/aws-crudq-pytest-lab.git
+cd aws-crudq-pytest-lab
+```
+
+**2. Create the virtual environment** (once per clone)
+
+| macOS / Linux | Windows (PowerShell) |
+|---|---|
+| `python3 -m venv .venv` | `py -3 -m venv .venv` |
+
+**3. Activate it** (every new terminal window)
+
+| macOS / Linux | Windows (PowerShell) |
+|---|---|
+| `source .venv/bin/activate` | `.venv\Scripts\Activate.ps1` |
+
+Your prompt now starts with `(.venv)`. To confirm the active Python is the project's:
+
+| macOS / Linux | Windows (PowerShell) |
+|---|---|
+| `which python` → `.../aws-crudq-pytest-lab/.venv/bin/python` | `Get-Command python` → `...\.venv\Scripts\python.exe` |
+
+If PowerShell refuses to run the activate script, run this once, then activate again:
+`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
+
+**4. Install the dependencies** (with the venv active)
+
+```bash
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+`requirements.txt` pins exact versions (boto3, moto, pytest), so you get the same results as CI.
+
+**5. Run the tests**
+
+```bash
+pytest -q                                  # everything (integration tests skip)
+pytest tests/unit -v                       # unit tests, one line per test
+pytest tests/unit/test_dynamo_crud.py -v   # one file
+pytest -k query -v                         # tests whose name contains "query"
+```
+
+**6. When you're done**
+
+```bash
+deactivate       # leave the virtual environment (same command on every OS)
+```
+
+### One-command setup
+
+`./scripts/setup.sh` (macOS / Linux) does steps 2, 4 and 5 for you. It checks your Python version, creates `.venv` if it doesn't exist, installs the requirements and runs the unit tests. To use a specific Python: `PYTHON=python3.13 ./scripts/setup.sh`. It can't activate the venv in your terminal (no script can), so run `source .venv/bin/activate` afterward.
+
+### VS Code
+
+The repo includes `.vscode/settings.json`, which points VS Code at `.venv` and turns on the pytest Test Explorer.
+
+1. Open the folder in VS Code **after** creating `.venv`.
+2. If VS Code still shows another interpreter: Command Palette (`Cmd/Ctrl+Shift+P`) → **Python: Select Interpreter** → pick `./.venv/bin/python` (Windows: `.\.venv\Scripts\python.exe`).
+3. Open the Testing panel (beaker icon) to run or debug individual tests.
+
+### Starting over
+
+If the environment gets into a bad state, delete it and rebuild:
+
+```bash
+deactivate 2>/dev/null; rm -rf .venv     # Windows: Remove-Item -Recurse -Force .venv
+./scripts/setup.sh                       # or repeat steps 2-4
+```
+
+### Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `ModuleNotFoundError: No module named 'boto3'` (or `moto`) | The venv isn't active, or step 4 was skipped. Activate it and reinstall. |
+| `pytest: command not found` | Same: activate the venv. Or run `python -m pytest`. |
+| `python3: command not found` / version below 3.10 | Install a newer Python (see Prerequisites). |
+| `externally-managed-environment` error from pip | You're installing into the system Python. Create and activate `.venv` first. |
+| VS Code: "package not installed in the selected environment" | Select the `.venv` interpreter (see VS Code above). |
+| Unit tests try to reach AWS or ask for credentials | They shouldn't: `tests/unit/conftest.py` sets fake credentials. Check you're running `tests/unit` and that the `aws` fixture is in use. |
 
 ## What's inside
 
@@ -34,6 +136,8 @@ The 2 skipped tests are the real-AWS integration tests (see below).
 | `tests/integration/` | 2 real-AWS tests with unique resource names and guaranteed cleanup (opt-in) |
 | `buildspec.yml` | AWS CodeBuild config that runs the suite inside AWS and publishes a JUnit report |
 | `.github/workflows/tests.yml` | GitHub Actions: runs the unit tests on every push |
+| `scripts/setup.sh` | One-command setup: venv, dependencies, unit tests |
+| `.vscode/settings.json` | Points VS Code at `.venv` and enables the pytest Test Explorer |
 
 ## CRUDQ at a glance
 
