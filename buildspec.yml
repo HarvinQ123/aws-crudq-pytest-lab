@@ -1,0 +1,21 @@
+# AWS CodeBuild: runs the tests inside AWS and publishes a JUnit test report.
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.12
+    commands:
+      - pip install -r requirements.txt
+  build:
+    commands:
+      - pytest tests/unit --junitxml=reports/unit.xml
+      # Real-AWS tests use the CodeBuild service role's permissions:
+      - RUN_AWS_INTEGRATION=1 pytest tests/integration --junitxml=reports/integration.xml
+
+reports:
+  pytest-reports:
+    files:
+      - "*.xml"
+    base-directory: reports
+    file-format: JUNITXML
